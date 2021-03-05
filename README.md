@@ -1,2 +1,2 @@
-# surveillance_project
-surveillance using cellphone cameras
+# Computer vision applications
+
