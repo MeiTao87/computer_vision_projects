@@ -1,0 +1,5 @@
+__pycache__/
+sdoku_solver_with_CV/__pycache__/
+sdoku_solver_with_CV/training_img/
+sdoku_solver_with_CV/weights/
+sdoku_solver_with_CV/test.py
