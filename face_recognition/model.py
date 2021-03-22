@@ -60,38 +60,40 @@ class DataGenerator(tf.keras.utils.Sequence):
             points = data['shapes'][0]['points']
             x1, y1 = points[0]
             x2, y2 = points[1]
-            centerx, centery = [x1 + 0.5*(x2-x1), y1 + 0.5*(y2-y1)]
             w, h = x2-x1, y2-y1
+            centerx, centery = [x1 + 0.5*w, y1 + 0.5*h]
             centerx, centery, w, h = int(centerx), int(centery), int(w), int(h)
         return centerx, centery, w, h
 
-    # data: (60000, 28, 28)     label: (60000,)
-    def __init__(self, training_path, batch_size=32, dim=(160,120), n_channels=1,
+    def __init__(self, training_path, batch_size=32, dim=(64*3,48*3), n_channels=1,
                  n_classes=2, shuffle=True):
         self.dim = dim
         self.batch_size = batch_size
         self.training_path = training_path
+        self.n_channels = n_channels
+        self.n_classes = n_classes
+        self.shuffle = shuffle
         self.img_path = []
         self.label_path = []
         for subdir, dirs, files in os.walk(self.training_path):
-            for file in files:
-                if(os.path.join(subdir, file)).endswith(".jpg"):
-                    label = file[:-4] + '.json'
-                    self.img_path.append(os.path.join(subdir, file)) 
+            for f in files:
+                if(os.path.join(subdir, f)).endswith(".jpg"):
+                    label = f[:-4] + '.json'
+                    self.img_path.append(os.path.join(subdir, f)) 
                     self.label_path.append(os.path.join(subdir, label))
         # using assert?
         self.training = np.empty((len(self.img_path), self.dim[1], self.dim[0]))
         self.labels = np.empty((len(self.img_path), 4))
         for i in range(len(self.img_path)):
             img = cv2.imread(self.img_path[i], 0)
-            img = cv2.resize(img, self.dim)
+            # img = cv2.resize(img, self.dim)
             x, y, w, h = DataGenerator.json_to_bbox(self.label_path[i])
-            x1, y1, x2, y2 = int(x-0.5*w), int(y-0.5*h), int(x+0.5*w), int(y+0.5*h)
+            print('x, y, w, h', x, y, w, h)
+            x1, y1, x2, y2 = int(x-0.5*w), int(y-0.5*h), int(x+0.5*w),  int(y+0.5*h)
+            ################
+            print('x1, y1, x2, y2', x1, y1, x2, y2)
             self.training[i] = img
             self.labels[i] = x1, y1, x2, y2
-        self.n_channels = n_channels
-        self.n_classes = n_classes
-        self.shuffle = shuffle
         self.on_epoch_end()
 
 
@@ -120,7 +122,7 @@ class DataGenerator(tf.keras.utils.Sequence):
         'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
         # Initialization
         X = np.empty((self.batch_size, self.dim[1], self.dim[0], self.n_channels), dtype=np.float32)
-        y = np.empty((self.batch_size, 4), dtype=np.int8)
+        y = np.empty((self.batch_size, 4), dtype=np.int16)
 
         # Generate data
         for i, img_and_label in enumerate (zip(training_temp, label_temp)):
