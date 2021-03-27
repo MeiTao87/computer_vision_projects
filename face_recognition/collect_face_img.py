@@ -3,19 +3,20 @@ import cv2
 import argparse
 from PIL import Image  
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 parser = argparse.ArgumentParser(description='Save face image')
 parser.add_argument('person_name', type=str, help='Name of person')
 parser.add_argument('ratio', type=int, help='ratio of the frame size')
+parser.add_argument('start_index', type=int, help='index/name of the image saved')
 args = parser.parse_args()
 
-def main(person_name, ratio):
+def main(person_name, ratio, start_index):
     # get PWD
     full_path = os.path.realpath(__file__)
     save_dir = os.path.dirname(full_path) + '/' + person_name + '/'  # /home/mt/Desktop/For_github/computer_vision_projects/face_recognition
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    start_index = 1
+    
     while True:
         # print(save_dir)
         ret, frame = cap.read()
@@ -39,4 +40,4 @@ def main(person_name, ratio):
     cv2.destroyAllWindows()
 
 if __name__ == '__main__':
-    main(args.person_name, args.ratio)
+    main(args.person_name, args.ratio, args.start_index)
