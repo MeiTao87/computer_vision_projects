@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow.keras.applications.resnet50 import ResNet50
 import numpy as np
 from tensorflow.keras.layers import Conv2D, Activation, MaxPooling2D, Flatten, Dense, Dropout, concatenate, Concatenate
 import os
@@ -6,7 +7,7 @@ import cv2
 import json
 from tensorflow import keras
 import tensorflow.keras.backend as K
-from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, InputLayer, Dropout, Flatten, Reshape, Conv2D, MaxPooling2D, GlobalMaxPooling2D
 from tensorflow.keras.regularizers import l2
 
@@ -79,18 +80,18 @@ class DataGenerator(tf.keras.utils.Sequence):
             x, y, w, h = centerx/W, centery/H, w/W, h/H
         return x, y, w, h
 
-    @staticmethod
-    def read_from_json(json_file_path):
-        with open(json_file_path) as f:
-            data = json.load(f)
-            points = data['shapes'][0]['points']
-            H, W = data['imageHeight'], data['imageWidth']
-            x1, y1 = points[0]
-            x2, y2 = points[1]
-            w, h = x2-x1, y2-y1
+    # @staticmethod
+    # def read_from_json(json_file_path):
+    #     with open(json_file_path) as f:
+    #         data = json.load(f)
+    #         points = data['shapes'][0]['points']
+    #         H, W = data['imageHeight'], data['imageWidth']
+    #         x1, y1 = points[0]
+    #         x2, y2 = points[1]
+    #         w, h = x2-x1, y2-y1
 
 
-    def __init__(self, training_path, S=7, B=2, batch_size=32, dim=(48*3, 64*3), n_channels=1,
+    def __init__(self, training_path, S=7, B=2, batch_size=32, dim=(48*3, 64*3), n_channels=3,
                  n_classes=1, shuffle=True):
         self.dim = dim
         self.H, self.W = self.dim[0], self.dim[1]
@@ -111,13 +112,15 @@ class DataGenerator(tf.keras.utils.Sequence):
                     self.label_path.append(os.path.join(subdir, label))
         # using assert?
         ############### rebuild the labels structure
-        self.training = np.empty((len(self.img_path), self.H, self.W))
+        self.training = np.empty((len(self.img_path), self.H, self.W, self.n_channels))
         self.labels = np.zeros((len(self.img_path), self.S, self.S, self.B*5+self.n_classes)) # (length, S, S, (5B+C)) -> (length, 7, 7, 11)
-        print('in model shape', self.labels.shape)
         for i in range(len(self.img_path)):
             img = cv2.imread(self.img_path[i], 0)
             # resize to (H, W)
             img = cv2.resize(img, (self.W, self.H))
+            # convert gray scale to RGB
+            img  = np.stack((img,)*3, axis=-1)
+            self.training[i] = img
             # if label exists, read the label, and make the first entry 1 (means there is face in the image)
             if os.path.isfile(self.label_path[i]):
                 x, y, w, h = DataGenerator.json_to_bbox(self.label_path[i])
@@ -127,14 +130,15 @@ class DataGenerator(tf.keras.utils.Sequence):
                 loc_j = int(loc[0])
                 y = loc[1] - loc_i
                 x = loc[0] - loc_j
+                # label is like : class_id, (x,y,w,h,conf), (x,y,w,h,conf), (x,y,w,h,conf)...
                 self.labels[i, loc_i, loc_j, 0] = 1
                 self.labels[i, loc_i, loc_j, self.n_classes: self.n_classes+4] = [x, y, w, h]
                 self.labels[i, loc_i, loc_j, self.n_classes+4] = 1                
                 
             # else make the label like [0, 0, 0, 0, 0]
-            else: 
-                continue # not necessary
-            self.training[i] = img
+            # else: 
+            #     continue # not necessary
+            
         self.on_epoch_end()
 
 
@@ -173,7 +177,7 @@ class DataGenerator(tf.keras.utils.Sequence):
             # Store sample
             training_img, training_label = img_and_label
             training_img = training_img / 255.0
-            training_img = np.expand_dims(training_img, axis=2)
+            # training_img = np.expand_dims(training_img, axis=2)
             X[i,] = training_img
             # Store class
             y[i] = training_label
@@ -230,6 +234,7 @@ class Face_classify:
 
 
 # https://www.maskaravivek.com/post/yolov1/
+# inspried by github repo: https://github.com/JY-112553/yolov1-keras-voc
 class Yolo_Reshape(tf.keras.layers.Layer):
     def __init__(self, S=7, B=2, C=1):
         super(Yolo_Reshape, self).__init__()
@@ -328,4 +333,31 @@ class Face_yolo:
         return model
     
 
-# inspried by github repo: https://github.com/JY-112553/yolov1-keras-voc
+
+
+# Using pretrained ResNet50 as feather extraction
+class Face_yolo_Resnet:
+    def __init__(self, B=2, C=1, S=7, img_w=192, img_h=144):
+        self.B = B
+        self.S = S
+        # self.cell_w = cell_w
+        # self.cell_h = cell_h
+        self.C = C
+        self.img_w = img_w
+        self.img_h = img_h
+   
+    def build(self):
+        lrelu = tf.keras.layers.LeakyReLU(alpha=0.1)
+        
+        resnet = ResNet50(include_top=False, input_shape=(self.img_h, self.img_w, 3))
+        for layer in resnet.layers:
+            layer.trainable = False
+        
+        flat = Flatten()(resnet.layers[-1].output)
+        dense_layer = Dense(256, activation='relu')(flat)
+        output = Dense(self.S * self.S * (self.B * 5 + self.C), activation='sigmoid')(dense_layer) 
+        output = Yolo_Reshape(S=self.S, B=self.B, C=self.C)(output)
+        model = Model(inputs=resnet.inputs, outputs=output)
+        
+        model.summary()
+        return model
