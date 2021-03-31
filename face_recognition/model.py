@@ -80,17 +80,6 @@ class DataGenerator(tf.keras.utils.Sequence):
             x, y, w, h = centerx/W, centery/H, w/W, h/H
         return x, y, w, h
 
-    # @staticmethod
-    # def read_from_json(json_file_path):
-    #     with open(json_file_path) as f:
-    #         data = json.load(f)
-    #         points = data['shapes'][0]['points']
-    #         H, W = data['imageHeight'], data['imageWidth']
-    #         x1, y1 = points[0]
-    #         x2, y2 = points[1]
-    #         w, h = x2-x1, y2-y1
-
-
     def __init__(self, training_path, S=7, B=2, batch_size=32, dim=(48*3, 64*3), n_channels=3,
                  n_classes=1, shuffle=True):
         self.dim = dim
@@ -134,13 +123,8 @@ class DataGenerator(tf.keras.utils.Sequence):
                 self.labels[i, loc_i, loc_j, 0] = 1
                 self.labels[i, loc_i, loc_j, self.n_classes: self.n_classes+4] = [x, y, w, h]
                 self.labels[i, loc_i, loc_j, self.n_classes+4] = 1                
-                
-            # else make the label like [0, 0, 0, 0, 0]
-            # else: 
-            #     continue # not necessary
             
         self.on_epoch_end()
-
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -251,13 +235,6 @@ class Yolo_Reshape(tf.keras.layers.Layer):
         return config
 
     def call(self, input):
-        # # grids 7x7
-        # S = [self.target_shape[0], self.target_shape[1]]
-        # # classes
-        # C = 2
-        # # no of bounding boxes per grid
-        # B = 2
-
         idx1 = self.S * self.S * self.C
         idx2 = idx1 + self.S * self.S * self.B
         
@@ -331,17 +308,12 @@ class Face_yolo:
         model.add(Yolo_Reshape(S=self.S, B=self.B, C=self.C))
         model.summary()
         return model
-    
-
-
 
 # Using pretrained ResNet50 as feather extraction
 class Face_yolo_Resnet:
     def __init__(self, B=2, C=1, S=7, img_w=192, img_h=144):
         self.B = B
         self.S = S
-        # self.cell_w = cell_w
-        # self.cell_h = cell_h
         self.C = C
         self.img_w = img_w
         self.img_h = img_h
