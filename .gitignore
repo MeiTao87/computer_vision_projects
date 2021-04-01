@@ -1,5 +1,12 @@
 __pycache__/
 sdoku_solver_with_CV/__pycache__/
+sdoku_solver_with_CV/data
 sdoku_solver_with_CV/training_img/
 sdoku_solver_with_CV/weights/
 sdoku_solver_with_CV/test.py
+misc
+face_recognition/__pycache__
+face_recognition/1
+face_recognition/2
+face_recognition/test.py
+face_recognition/VOC_data

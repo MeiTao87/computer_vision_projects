@@ -45,18 +45,19 @@ def generate_labels(H=1599, W=899):
         print(f'Saving {label_array_name} to the folder!')    
         np.save(label_array_path, label_array)
 
-def generate_training_for_locator(num_of_training, h=160, w=90):
-    
+def generate_training_for_locator(num_of_training, h=160*3, w=270):
     full_path = os.path.realpath(__file__)
     img_dir = os.path.dirname(full_path) + '/data/' + 'img/'
     label_dir = os.path.dirname(full_path) + '/data/' + 'label/'   
     training_data = np.empty((num_of_training, h, w), dtype=np.uint8)
     training_label = np.empty((num_of_training, 1, 10), dtype=np.float32)
+    
     transform = A.Compose([
         A.GaussNoise(p=0.5),
         A.RandomBrightnessContrast(p=0.5),
         A.GaussianBlur(p=0.5),
-    ])
+        ])
+
     if len(os.listdir(img_dir)) != len(os.listdir(label_dir)):
         print('Number of images and labels is not the same!')
     elif len(os.listdir(img_dir)) == len(os.listdir(label_dir)):

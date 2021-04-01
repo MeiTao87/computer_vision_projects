@@ -3,11 +3,17 @@ from tensorflow.keras.layers import Conv2D, Activation, MaxPooling2D, Flatten, D
 import numpy as np
 
 class DigitsClassifier:
-	@staticmethod
-	def build(width, height, depth, classes):
+	def __init__(self, width, height, depth, classes):
+		self.width = width
+		self.height = height
+		self.depth = depth
+		self.classes = classes
+
+
+	def build(self):
 		# initialize the model
 		model = tf.keras.Sequential()
-		inputShape = (height, width, depth)
+		inputShape = (self.height, self.width, self.depth)
         
 		# first set of CONV => RELU => POOL layers
 		model.add(Conv2D(32, (5, 5), padding="same",
@@ -32,7 +38,7 @@ class DigitsClassifier:
 		model.add(Dropout(0.5))
 		
 		# softmax classifier
-		model.add(Dense(classes))
+		model.add(Dense(self.classes))
 		model.add(Activation("softmax"))
 		# return the constructed network architecture
 		return model

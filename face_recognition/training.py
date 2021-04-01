@@ -2,7 +2,7 @@ import json
 import cv2
 import os
 import matplotlib.pyplot as plt
-from model import DataGenerator, Face_yolo
+from model import DataGenerator, Face_yolo, Face_yolo_Resnet
 import tensorflow as tf
 import numpy as np
 import tensorflow.keras.backend as K
@@ -13,7 +13,7 @@ gpu_devices = tf.config.experimental.list_physical_devices('GPU')
 for device in gpu_devices:
     tf.config.experimental.set_memory_growth(device, True)
 
-batch_size = 100
+batch_size = 4
 B=2
 C=1
 S=3
@@ -120,22 +120,10 @@ def yolo_loss(y_true, y_pred):
 
     return loss
 
-
-
-t_d = DataGenerator(training_path=training_path, S=S, B=B, batch_size=batch_size, dim=dim, n_channels=1,
+t_d = DataGenerator(training_path=training_path, S=S, B=B, batch_size=batch_size, dim=dim, n_channels=3,
                  n_classes=C, shuffle=True)
 
-# # Test of the data generator
-a, b = t_d.__getitem__(0)
-for i in range(batch_size):
-    img = a[i,:,:,0]
-    label = b[i,:,:,:]
-    print(label)
-    print('_________________________________')
-    plt.imshow(img, cmap='gray')
-    plt.show()
-
-'''face_loc = Face_yolo(B=2, C=1, S=3)
+face_loc = Face_yolo_Resnet(B=2, C=1, S=3)
 test_model = face_loc.build()
 # multiple loss
 test_model.compile(loss=yolo_loss, optimizer='adam', metrics=["accuracy"])
@@ -144,9 +132,9 @@ test_model.fit(t_d, steps_per_epoch=len(t_d),
                 epochs=10,
                 verbose=2)
 
-infer_img = cv2.imread('/home/mt/Desktop/For_github/computer_vision_projects/face_recognition/1/5.jpg', 0)
+infer_img = cv2.imread('/home/mt/Desktop/For_github/computer_vision_projects/face_recognition/1/5.jpg')
 infer_img = cv2.resize(infer_img, (192, 144))
 infer_img = np.expand_dims(infer_img, axis=0)
-infer_img = np.expand_dims(infer_img, axis=3)
+# infer_img = np.expand_dims(infer_img, axis=3)
 res = test_model.predict(infer_img)
-print(res)'''
+print(res)

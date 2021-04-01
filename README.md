@@ -1,7 +1,13 @@
-# Computer vision applications
-* pendulum.py has the issue of cannot calculate the angle of the pedunlum when the algorithm fails to detect the pendulum.
-* color_circle_detection_angle_distance_calculation is an upgrade version for pendulum tracking, it tracks the color circle and calculate the angle of the pedunlum.
-* Multiple object detection
+# Face recognition
+* Pipeline: face detect --> crop --> classify (whose face) --> notification
+* Todo: 
+  * collect and annotate more data. 
+    * Save images into different folders, the folder name can be used as the label for classifier.
+    * Save BBOX label (json format) in the same folder with the same name as the image.
+  * notification: send email? save in DB?
+* Done: 
+  * object detection model built (model, loss function)
+
 
 # Sudoku Solver
 

@@ -89,7 +89,8 @@ class DataGenerator(tf.keras.utils.Sequence):
         return X, tf.keras.utils.to_categorical(y, num_classes=self.n_classes)
 
 # Build the model
-digits_classifier = DigitsClassifier.build(width=28, height=28, depth=1, classes=10)
+digits_classifier = DigitsClassifier(width=28, height=28, depth=1, classes=10)
+digits_classifier = digits_classifier.build()
 digits_classifier.compile(loss="categorical_crossentropy", optimizer='adam', metrics=["accuracy"])
 #### load data
 # mnist = tf.keras.datasets.mnist

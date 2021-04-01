@@ -75,13 +75,13 @@ def main(from_camera=False):
         cap.release()
         cv2.destroyAllWindows()    
     else:
-        img = cv2.imread('/home/mt/Desktop/For_github/computer_vision_projects/sdoku_solver_with_CV/sudoku.jpg', 0)
+        img = cv2.imread('/home/mt/Desktop/For_github/computer_vision_projects/sdoku_solver_with_CV/test_img/sudoku.jpg', 0)
         # fromImg = FromImg(img=img)
         # new_img = fromImg.convert()
         new_img = locate_sudoku(img)
         H, W = new_img.shape
         h, w = H/9, W/9
-        new_img = cv2.adaptiveThreshold(new_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 33, 7)
+        # new_img = cv2.adaptiveThreshold(new_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 33, 7)
         for col in range(9):
             for row in range(9):
                 pt1 = (int(col*w+0.1*w), int(row*h+0.1*h))
@@ -90,17 +90,17 @@ def main(from_camera=False):
                 # using NN to tell which number it is, and put it in the input sdoku
                 # resized_sub_img = cv2.bitwise_not(sub_img)
                 # resized_sub_img = cv2.threshold
-                resized_sub_img = sub_img.astype("float32") / 255.0
-                resized_sub_img = cv2.resize(resized_sub_img, dsize=model_img_size)
+                sub_img = sub_img.astype("float32") / 255.0
+                resized_sub_img = cv2.resize(sub_img, dsize=model_img_size)
                 resized_sub_img = np.expand_dims(resized_sub_img, axis=2)
                 resized_sub_img = np.expand_dims(resized_sub_img, axis=0)
                 predicted_num = digits_classifier.predict(resized_sub_img)
                 pre_array = np.array(predicted_num[0])
                 # print('argmax: ', np.argmax(pre_array))
                 # print( 'row', row, 'col', col)
-                plt.imshow(sub_img, cmap='gray', vmin=0, vmax=1)
-                plt.title('Predicted number is:' + str(np.argmax(pre_array)))
-                plt.show()
+                # plt.imshow(sub_img, cmap='gray', vmin=0, vmax=1)
+                # plt.title('Predicted number is:' + str(np.argmax(pre_array)))
+                # plt.show()
                 sdoku[row, col] = np.argmax(pre_array)
         print('unsolved puzzle: \n', sdoku)
     
