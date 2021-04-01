@@ -1,15 +1,16 @@
-import tensorflow as tf
-from tensorflow.keras.applications.resnet50 import ResNet50
-import numpy as np
-from tensorflow.keras.layers import Conv2D, Activation, MaxPooling2D, Flatten, Dense, Dropout, concatenate, Concatenate
 import os
 import cv2
 import json
-from tensorflow import keras
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
+import tensorflow as tf
 import tensorflow.keras.backend as K
-from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.layers import Dense, InputLayer, Dropout, Flatten, Reshape, Conv2D, MaxPooling2D, GlobalMaxPooling2D
 from tensorflow.keras.regularizers import l2
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.applications.resnet50 import ResNet50
+from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
+from tensorflow.keras.layers import Conv2D, Activation, MaxPooling2D, Flatten, Dense, concatenate, Concatenate, InputLayer, Dropout, Reshape, GlobalMaxPooling2D, GlobalAveragePooling2D
+# from tensorflow import keras
 
 
 class Face_loc:
@@ -253,6 +254,7 @@ class Yolo_Reshape(tf.keras.layers.Layer):
         outputs = K.concatenate([class_probs, confs, boxes])
         return outputs    
 
+
 class Face_yolo:
     def __init__(self, B=2, C=1, S=7, img_w=192, img_h=144):
         self.B = B
@@ -309,6 +311,7 @@ class Face_yolo:
         model.summary()
         return model
 
+
 # Using pretrained ResNet50 as feather extraction
 class Face_yolo_Resnet:
     def __init__(self, B=2, C=1, S=7, img_w=192, img_h=144):
@@ -333,3 +336,100 @@ class Face_yolo_Resnet:
         
         model.summary()
         return model
+
+
+# image classifier with pretrained MobileNet (mobilenet is quick and small)
+class Face_classifier_mobilenet:
+    def __init__(self, n_classes, input_shape):
+        self.n_classes = n_classes
+        self.input_shape = input_shape
+
+    def build(self):
+        base_model = MobileNetV2(input_shape=self.input_shape, weights='imagenet', include_top=False)
+        x = base_model.output
+        x = GlobalAveragePooling2D()(x)
+        x = Dense(256, activation='relu')(x)
+        predictions = Dense(self.n_classes, activation='softmax')(x)
+        model = Model(inputs=base_model.input, outputs=predictions)
+        for layer in base_model.layers:
+            layer.trainable = False
+        model.summary()
+        return model
+
+
+class DataGenerator_classsifier(tf.keras.utils.Sequence):
+
+    def __init__(self, training_path, batch_size=32, H=144, W=192, n_classes=3, n_channels=3, shuffle=True):
+        self.H = H
+        self.W = W
+        self.n_channels = n_channels
+        self.img_path = []
+        self.label_path = []
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.training_path = training_path
+        self.sub_dirs = os.listdir(training_path)
+        le = LabelEncoder()
+        le.fit(self.sub_dirs)
+        self.n_classes = len(self.sub_dirs)
+        for self.sub_dir in self.sub_dirs:
+            for f in (os.listdir(os.path.join(self.training_path, self.sub_dir))):
+                if f.endswith('jpg'):
+                    self.img_path.append(os.path.join(self.training_path, self.sub_dir, f))
+                    # self.label_path.append(le.transform(self.sub_dir.split(" ")))
+                    self.label_encoder = le.transform(self.sub_dir.split(" "))
+                    self.OneHotLabel = tf.keras.utils.to_categorical(self.label_encoder, num_classes=self.n_classes)
+                    self.label_path.append(self.OneHotLabel)
+                    # print(self.OneHotLabel)
+        self.training = np.empty((len(self.img_path), self.H, self.W, self.n_channels))
+        self.labels = np.zeros((len(self.img_path), self.n_classes)) 
+        for i in range(len(self.img_path)):
+            img = cv2.imread(self.img_path[i], 0)
+            # resize to (H, W)
+            img = cv2.resize(img, (self.W, self.H))
+            # convert gray scale to RGB
+            img  = np.stack((img,)*3, axis=-1)
+            self.training[i] = img
+            self.labels[i] = self.label_path[i]
+        self.on_epoch_end()
+
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return int(np.floor(len(self.training) / self.batch_size))
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        # Generate indexes of the batch
+        indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
+        # Find list of training data
+        training_temp = [self.training[k,:,:] for k in indexes]
+        label_temp = [self.labels[k] for k in indexes]
+        # Generate data
+        X, y = self.__data_generation(training_temp, label_temp)
+        # expand dimensions
+        # y = np.expand_dims(y, axis=1)
+        # y = np.expand_dims(y, axis=2)
+        return X, y
+
+    def on_epoch_end(self):
+        'Updates indexes after each epoch'
+        self.indexes = np.arange(len(self.training))
+        if self.shuffle == True:
+            np.random.shuffle(self.indexes)
+
+    def __data_generation(self, training_temp, label_temp):
+        'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
+        # Initialization
+        X = np.empty((self.batch_size, self.H, self.W, self.n_channels), dtype=np.float32)
+        y = np.empty((self.batch_size, self.n_classes), dtype=np.int16)
+
+        # Generate data
+        for i, img_and_label in enumerate (zip(training_temp, label_temp)):
+            # Store sample
+            training_img, training_label = img_and_label
+            training_img = training_img / 255.0
+            # training_img = np.expand_dims(training_img, axis=2)
+            X[i,] = training_img
+            # Store class
+            y[i] = training_label
+        return X, y
