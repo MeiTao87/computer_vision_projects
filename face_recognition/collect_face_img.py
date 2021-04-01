@@ -13,7 +13,8 @@ args = parser.parse_args()
 def main(person_name, ratio, start_index):
     # get PWD
     full_path = os.path.realpath(__file__)
-    save_dir = os.path.dirname(full_path) + '/' + person_name + '/'  # /home/mt/Desktop/For_github/computer_vision_projects/face_recognition
+    save_dir = os.path.dirname(full_path) + '/' + person_name + '/'  
+    # /home/mt/Desktop/For_github/computer_vision_projects/face_recognition
     # create folder "person_name" if does not exist
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
