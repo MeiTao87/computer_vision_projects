@@ -6,7 +6,17 @@ sdoku_solver_with_CV/weights/
 sdoku_solver_with_CV/test.py
 misc
 face_recognition/__pycache__
-face_recognition/1
-face_recognition/2
+face_recognition/Pytorch_version/.ipynb_checkpoints
+face_recognition/Pytorch_version/pytorch_transfer_learning.ipynb
 face_recognition/test.py
+<<<<<<< Updated upstream
 face_recognition/VOC_data
+=======
+face_recognition/VOC_data
+face_recognition/data
+mask_Rcnn
+transformer
+humble_yolo
+Pytorch
+.vscode
+>>>>>>> Stashed changes
