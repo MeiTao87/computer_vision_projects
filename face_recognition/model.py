@@ -9,7 +9,7 @@ from tensorflow.keras.regularizers import l2
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.applications.resnet50 import ResNet50
 from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
-from tensorflow.keras.layers import Conv2D, Activation, MaxPooling2D, Flatten, Dense, concatenate, Concatenate, InputLayer, Dropout, Reshape, GlobalMaxPooling2D, GlobalAveragePooling2D
+from tensorflow.keras.layers import Conv2D, Activation, MaxPooling2D, Flatten, Dense, concatenate, Concatenate, InputLayer, Dropout, Reshape, GlobalMaxPooling2D, GlobalAveragePooling2D, Reshape
 
 
 class DataGenerator(tf.keras.utils.Sequence):
@@ -26,8 +26,8 @@ class DataGenerator(tf.keras.utils.Sequence):
             x, y, w, h = centerx/W, centery/H, w/W, h/H
         return x, y, w, h
 
-    def __init__(self, training_path, S=7, B=2, batch_size=32, dim=(48*3, 64*3), n_channels=3,
-                 shuffle=True):
+    def __init__(self, training_path, S=7, B=1, batch_size=32, dim=(48*3, 64*3), n_channels=3,
+                 shuffle=True, augmentation=False):
         self.dim = dim
         self.H, self.W = self.dim[0], self.dim[1]
         self.batch_size = batch_size
@@ -51,7 +51,6 @@ class DataGenerator(tf.keras.utils.Sequence):
                     # generate OneHotLabel for this sub folder
                     self.label_encoder = le.transform(self.sub_dir.split(" "))
                     self.OneHotLabel = tf.keras.utils.to_categorical(self.label_encoder[0], num_classes=self.n_classes)
-                    print('self.OneHotLabel', self.OneHotLabel, (self.OneHotLabel.shape))
                     # check if the json file exists, yes: clss_id, xywhpc, xywhpc; (no: class_id, 00000) makes no sense...
                     self.json_path = os.path.join(self.training_path,self.sub_dir, f[:-4] + '.json')
                     self.label_path.append([self.json_path, self.OneHotLabel])
@@ -78,7 +77,7 @@ class DataGenerator(tf.keras.utils.Sequence):
             self.labels[i, loc_i, loc_j, :self.n_classes] = self.label_path[i][1]
             self.labels[i, loc_i, loc_j, self.n_classes: self.n_classes+4] = [x, y, w, h]
             self.labels[i, loc_i, loc_j, self.n_classes+4] = 1                
-            
+        self.augmentation = augmentation    
         self.on_epoch_end()
 
     def __len__(self):
@@ -104,6 +103,9 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.indexes = np.arange(len(self.training))
         if self.shuffle == True:
             np.random.shuffle(self.indexes)
+        if self.augmentation == True:
+            pass
+        
 
     def __data_generation(self, training_temp, label_temp):
         'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
@@ -162,7 +164,7 @@ class Yolo_Reshape(tf.keras.layers.Layer):
 
 # Using pretrained ResNet50 as feather extraction
 class Face_yolo_Resnet:
-    def __init__(self, B=2, C=1, S=7, img_w=192, img_h=144):
+    def __init__(self, B=1, C=1, S=7, img_w=192, img_h=144):
         self.B = B # bbox number
         self.S = S # grid number
         self.C = C # class number
@@ -179,7 +181,8 @@ class Face_yolo_Resnet:
         flat = Flatten()(resnet.layers[-1].output)
         dense_layer = Dense(256, activation='relu')(flat)
         output = Dense(self.S * self.S * (self.B * 5 + self.C), activation='sigmoid')(dense_layer) 
-        output = Yolo_Reshape(S=self.S, B=self.B, C=self.C)(output)
+        output = Reshape((self.S, self.S,(self.C+self.B*5)))(output)
+        #output = Yolo_Reshape(S=self.S, B=self.B, C=self.C)(output)
         model = Model(inputs=resnet.inputs, outputs=output)
         
         model.summary()
